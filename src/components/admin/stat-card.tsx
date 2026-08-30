@@ -2,10 +2,12 @@ export function StatCard({
   icon,
   label,
   value,
+  secondaryValue,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
+  secondaryValue?: string;
 }) {
   return (
     <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
@@ -16,6 +18,9 @@ export function StatCard({
         {label}
       </p>
       <p className="mt-1 font-display text-2xl font-bold text-[#1f1b16]">{value}</p>
+      {secondaryValue ? (
+        <p className="mt-0.5 text-xs font-medium text-[#8c8579]">{secondaryValue}</p>
+      ) : null}
     </div>
   );
 }

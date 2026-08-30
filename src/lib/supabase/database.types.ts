@@ -282,6 +282,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: { articulos_en_stock: number; total_vendido: number }[]
       }
+      // Agregada a mano para supabase/migrations/20260831000000_resumen_vendedor.sql.
+      resumen_vendedor: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_vendido: number
+          comision_total: number
+          pedidos_realizados: number
+        }[]
+      }
     }
     Enums: {
       estado_pedido: "pendiente" | "enviado" | "cancelado"
