@@ -58,6 +58,27 @@ export function SearchIcon({ className }: IconProps) {
   );
 }
 
+export function CheckCircleIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m8.5 12.5 2.5 2.5 4.5-5" />
+    </svg>
+  );
+}
+
+export function MessageIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 12a8 8 0 1 1 3.5 6.6L4 20l1.4-3.5A7.96 7.96 0 0 1 4 12Z"
+      />
+    </svg>
+  );
+}
+
 export function TrashIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.5} stroke="currentColor" className={className}>
