@@ -3,7 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // Headers "internos": si ya resolvimos user+rol aca, se los pasamos al
+  // layout/pagina via request headers para que no tengan que volver a
+  // golpear la red (cada ida y vuelta a Supabase pesa varios cientos de ms
+  // en conexiones con latencia alta, y hacerlo dos veces por click se nota).
+  const requestHeaders = new Headers(request.headers);
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +20,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );
@@ -43,18 +48,19 @@ export async function updateSession(request: NextRequest) {
 
   // Ya hay sesion: solo resolver el rol si la ruta lo necesita, para no pagar
   // una consulta extra en cada request a rutas que no dependen de el.
-  const necesitaRol = isLoginRoute || pathname.startsWith("/admin") || pathname.startsWith("/vendedor");
+  const necesitaRol =
+    pathname === "/" || isLoginRoute || pathname.startsWith("/admin") || pathname.startsWith("/vendedor");
   if (!necesitaRol) return response;
 
   const { data: perfil } = await supabase
     .from("usuarios")
-    .select("rol")
+    .select("nombre, rol")
     .eq("id", user.id)
     .single();
 
   const destinoPropio = perfil?.rol === "admin" ? "/admin" : "/vendedor";
 
-  if (isLoginRoute) {
+  if (pathname === "/" || isLoginRoute) {
     const url = request.nextUrl.clone();
     url.pathname = destinoPropio;
     return NextResponse.redirect(url);
@@ -71,6 +77,13 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/admin";
     return NextResponse.redirect(url);
   }
+
+  // Llegamos hasta aca solo si el usuario tiene permiso para esta ruta:
+  // le pasamos sus datos ya resueltos al layout/pagina via headers.
+  requestHeaders.set("x-usuario-id", user.id);
+  requestHeaders.set("x-usuario-nombre", encodeURIComponent(perfil?.nombre ?? ""));
+  requestHeaders.set("x-usuario-rol", perfil?.rol ?? "");
+  response = NextResponse.next({ request: { headers: requestHeaders } });
 
   return response;
 }

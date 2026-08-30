@@ -1,21 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: perfil } = await supabase
-    .from("usuarios")
-    .select("rol")
-    .eq("id", user.id)
-    .single();
-
-  redirect(perfil?.rol === "admin" ? "/admin" : "/vendedor");
+// El middleware ya resuelve "/" -> /admin o /vendedor segun el rol (o /login
+// si no hay sesion) antes de que esta pagina llegue a renderizar. Esto es
+// solo un respaldo por si algun dia el matcher de proxy.ts cambiara.
+export default function Home() {
+  redirect("/login");
 }
