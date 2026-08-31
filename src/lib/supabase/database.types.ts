@@ -291,6 +291,17 @@ export type Database = {
           pedidos_realizados: number
         }[]
       }
+      // Agregada a mano para supabase/migrations/20260901000000_resumen_por_vendedor.sql.
+      resumen_por_vendedor: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          vendedor_id: string
+          nombre: string
+          total_vendido: number
+          comision_total: number
+          pedidos_realizados: number
+        }[]
+      }
     }
     Enums: {
       estado_pedido: "pendiente" | "enviado" | "cancelado"

@@ -12,11 +12,16 @@ export default async function VendedoresPage({
   const { error } = await searchParams;
 
   const supabase = await createClient();
-  const { data: vendedores } = await supabase
-    .from("usuarios")
-    .select("id, nombre, correo_electronico, porcentaje_comision")
-    .eq("rol", "vendedor")
-    .order("nombre");
+  const [{ data: vendedores }, { data: resumenes }] = await Promise.all([
+    supabase
+      .from("usuarios")
+      .select("id, nombre, correo_electronico, porcentaje_comision")
+      .eq("rol", "vendedor")
+      .order("nombre"),
+    supabase.rpc("resumen_por_vendedor"),
+  ]);
+
+  const resumenPorId = new Map((resumenes ?? []).map((r) => [r.vendedor_id, r]));
 
   return (
     <main className="px-6">
@@ -38,7 +43,13 @@ export default async function VendedoresPage({
 
       <div className="mt-4 space-y-2">
         {vendedores && vendedores.length > 0 ? (
-          vendedores.map((vendedor) => <VendedorCard key={vendedor.id} vendedor={vendedor} />)
+          vendedores.map((vendedor) => (
+            <VendedorCard
+              key={vendedor.id}
+              vendedor={vendedor}
+              resumen={resumenPorId.get(vendedor.id)}
+            />
+          ))
         ) : (
           <EmptyState
             icon={<UsersIcon className="h-6 w-6" />}
