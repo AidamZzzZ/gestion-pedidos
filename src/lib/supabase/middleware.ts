@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 
+type Claims = {
+  sub: string;
+  user_rol?: "admin" | "vendedor";
+  user_nombre?: string;
+};
+
 export async function updateSession(request: NextRequest) {
   // Headers "internos": si ya resolvimos user+rol aca, se los pasamos al
   // layout/pagina via request headers para que no tengan que volver a
@@ -29,15 +35,18 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // getUser() revalida el token contra Supabase (no confiar solo en la cookie).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() valida el JWT (localmente y sin red si el proyecto usa claves
+  // de firma asimetricas; si no, cae a un request como getUser()) y devuelve
+  // el rol/nombre ya incluidos por el Auth Hook (supabase/migrations/
+  // 20260902000000_custom_access_token_hook.sql) - un viaje de red menos que
+  // antes, que ademas hacia getUser() + una consulta aparte a "usuarios".
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims as Claims | undefined;
 
   const { pathname } = request.nextUrl;
   const isLoginRoute = pathname.startsWith("/login");
 
-  if (!user) {
+  if (!claims) {
     if (!isLoginRoute) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
@@ -52,13 +61,24 @@ export async function updateSession(request: NextRequest) {
     pathname === "/" || isLoginRoute || pathname.startsWith("/admin") || pathname.startsWith("/vendedor");
   if (!necesitaRol) return response;
 
-  const { data: perfil } = await supabase
-    .from("usuarios")
-    .select("nombre, rol")
-    .eq("id", user.id)
-    .single();
+  let rol = claims.user_rol;
+  let nombre = claims.user_nombre;
 
-  const destinoPropio = perfil?.rol === "admin" ? "/admin" : "/vendedor";
+  // Respaldo: si el Auth Hook todavia no esta activado en el Dashboard (o la
+  // sesion se emitio antes de activarlo), el JWT no trae estos claims
+  // todavia. Consultamos como antes para que la app siga funcionando igual
+  // mientras tanto, y se vuelve mas rapida sola apenas el hook quede activo.
+  if (!rol || !nombre) {
+    const { data: perfil } = await supabase
+      .from("usuarios")
+      .select("nombre, rol")
+      .eq("id", claims.sub)
+      .single();
+    rol = perfil?.rol;
+    nombre = perfil?.nombre;
+  }
+
+  const destinoPropio = rol === "admin" ? "/admin" : "/vendedor";
 
   if (pathname === "/" || isLoginRoute) {
     const url = request.nextUrl.clone();
@@ -66,13 +86,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/admin") && perfil?.rol !== "admin") {
+  if (pathname.startsWith("/admin") && rol !== "admin") {
     const url = request.nextUrl.clone();
     url.pathname = "/vendedor";
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/vendedor") && perfil?.rol !== "vendedor") {
+  if (pathname.startsWith("/vendedor") && rol !== "vendedor") {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
     return NextResponse.redirect(url);
@@ -80,9 +100,9 @@ export async function updateSession(request: NextRequest) {
 
   // Llegamos hasta aca solo si el usuario tiene permiso para esta ruta:
   // le pasamos sus datos ya resueltos al layout/pagina via headers.
-  requestHeaders.set("x-usuario-id", user.id);
-  requestHeaders.set("x-usuario-nombre", encodeURIComponent(perfil?.nombre ?? ""));
-  requestHeaders.set("x-usuario-rol", perfil?.rol ?? "");
+  requestHeaders.set("x-usuario-id", claims.sub);
+  requestHeaders.set("x-usuario-nombre", encodeURIComponent(nombre ?? ""));
+  requestHeaders.set("x-usuario-rol", rol ?? "");
   response = NextResponse.next({ request: { headers: requestHeaders } });
 
   return response;

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerSesionDeHeaders } from "@/lib/auth/sesion";
-import { obtenerTasaBcv } from "@/lib/tasa-bcv";
 import { NuevoPedidoWizard } from "@/components/vendedor/nuevo-pedido-wizard";
 
 export default async function NuevoPedidoPage() {
@@ -11,10 +10,7 @@ export default async function NuevoPedidoPage() {
 
   const supabase = await createClient();
 
-  const [{ data: productos }, tasa] = await Promise.all([
-    supabase.from("productos").select("id, nombre, precio, stock").gt("stock", 0).order("nombre"),
-    obtenerTasaBcv(),
-  ]);
+  const { data: productos } = await supabase.from("productos").select("id, nombre, precio, stock").gt("stock", 0).order("nombre");
 
   return (
     <>
@@ -30,7 +26,6 @@ export default async function NuevoPedidoPage() {
 
       <NuevoPedidoWizard
         productos={productos ?? []}
-        tasa={tasa}
         vendedorNombre={sesion.nombre}
       />
     </>

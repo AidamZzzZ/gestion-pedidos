@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        # Build-time variables for Next.js public envs
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        - NEXT_PUBLIC_WHATSAPP_EMPRESA=${NEXT_PUBLIC_WHATSAPP_EMPRESA}
+    image: gestion-pedidos:latest
+    container_name: gestion-pedidos-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Runtime environment variables (only private ones are needed at runtime)
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - NODE_ENV=production
+    
+  # Opcional: Caddy como Reverse Proxy para HTTPS automatico
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: caddy-proxy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   depends_on:
+  #     - web
+
+# volumes:
+#   caddy_data:
+#   caddy_config:
+

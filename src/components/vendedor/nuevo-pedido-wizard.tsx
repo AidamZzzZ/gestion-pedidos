@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { crearPedidoCompleto, type DatosCliente } from "@/app/vendedor/pedidos/actions";
-import { formatoBs, type TasaBcv } from "@/lib/tasa-bcv";
 import { CheckCircleIcon, MessageIcon, SearchIcon } from "@/components/admin/icons";
 import { QuantityStepper } from "@/components/vendedor/quantity-stepper";
 
@@ -54,11 +53,9 @@ function CampoTexto({
 
 export function NuevoPedidoWizard({
   productos,
-  tasa,
   vendedorNombre,
 }: {
   productos: Producto[];
-  tasa: TasaBcv | null;
   vendedorNombre: string;
 }) {
   const [paso, setPaso] = useState<1 | 2 | 3>(1);
@@ -84,7 +81,6 @@ export function NuevoPedidoWizard({
   );
 
   const total = lineas.reduce((acc, l) => acc + l.producto.precio * l.cantidad, 0);
-  const totalBs = tasa ? total * tasa.promedio : null;
 
   const clienteCompleto = Object.values(cliente).every((v) => v.trim() !== "");
 
@@ -125,7 +121,6 @@ export function NuevoPedidoWizard({
       "",
       separador,
       `💵 *TOTAL: ${formatoMoneda.format(total)}*`,
-      totalBs ? `🇻🇪 Bs ${formatoBs.format(totalBs)}` : null,
       "",
       `🧾 Vendedor: ${vendedorNombre}`,
     ]
@@ -138,6 +133,15 @@ export function NuevoPedidoWizard({
     if (!numeroWhatsapp) return;
     const href = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(construirMensajeWhatsapp(numero))}`;
     window.open(href, "_blank");
+  }
+
+  // Limpia lo que haya escrito el vendedor (espacios, guiones, parentesis) y
+  // lo deja en formato internacional para wa.me: 0414-1234567 -> 584141234567.
+  function normalizarNumeroVenezolano(numero: string) {
+    const soloDigitos = numero.replace(/\D/g, "");
+    if (soloDigitos.startsWith("58")) return soloDigitos;
+    if (soloDigitos.startsWith("0")) return `58${soloDigitos.slice(1)}`;
+    return `58${soloDigitos}`;
   }
 
   async function confirmarPedido() {
@@ -172,6 +176,9 @@ export function NuevoPedidoWizard({
       ? `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(construirMensajeWhatsapp(numeroOrden))}`
       : null;
 
+    const numeroClienteWa = normalizarNumeroVenezolano(cliente.numero_contacto);
+    const waHrefCliente = `https://wa.me/${numeroClienteWa}?text=${encodeURIComponent(construirMensajeWhatsapp(numeroOrden))}`;
+
     return (
       <main className="flex flex-col items-center gap-4 px-6 py-16 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#e4eef1] text-[#2c5f86]">
@@ -199,6 +206,16 @@ export function NuevoPedidoWizard({
             Falta configurar el numero de WhatsApp de la empresa (NEXT_PUBLIC_WHATSAPP_EMPRESA).
           </p>
         )}
+
+        <a
+          href={waHrefCliente}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full max-w-xs items-center justify-center gap-2 rounded-2xl border border-[#3c6e82] py-4 text-sm font-bold uppercase tracking-wide text-[#3c6e82] transition hover:bg-[#e4eef1]"
+        >
+          <MessageIcon className="h-4 w-4" />
+          Envío de pedido a cliente
+        </a>
 
         <Link
           href="/vendedor/pedidos"
@@ -372,9 +389,6 @@ export function NuevoPedidoWizard({
                 <p className="font-display text-lg font-bold text-[#1f1b16]">
                   {formatoMoneda.format(total)}
                 </p>
-                {totalBs ? (
-                  <p className="text-xs text-[#8c8579]">Bs {formatoBs.format(totalBs)}</p>
-                ) : null}
               </div>
             </div>
           </div>

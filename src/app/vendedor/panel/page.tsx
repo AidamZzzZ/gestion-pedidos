@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerSesionDeHeaders } from "@/lib/auth/sesion";
-import { obtenerTasaBcv, formatoBs } from "@/lib/tasa-bcv";
-import { TasaBcvCard } from "@/components/tasa-bcv-card";
 import { StatCard } from "@/components/admin/stat-card";
 import { PedidoCard, type PedidoResumen } from "@/components/admin/pedido-card";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -20,7 +18,7 @@ export default async function PanelVendedorPage() {
 
   const supabase = await createClient();
 
-  const [{ data: resumen }, { data: pedidos }, tasa] = await Promise.all([
+  const [{ data: resumen }, { data: pedidos }] = await Promise.all([
     supabase.rpc("resumen_vendedor"),
     supabase
       .from("pedidos")
@@ -29,7 +27,6 @@ export default async function PanelVendedorPage() {
       )
       .eq("vendedor_id", sesion.id)
       .order("fecha", { ascending: false }),
-    obtenerTasaBcv(),
   ]);
 
   const totales = resumen?.[0] ?? {
@@ -38,29 +35,18 @@ export default async function PanelVendedorPage() {
     pedidos_realizados: 0,
   };
 
-  const bsVendido = tasa
-    ? `Bs ${formatoBs.format(totales.total_vendido * tasa.promedio)}`
-    : undefined;
-  const bsComision = tasa
-    ? `Bs ${formatoBs.format(totales.comision_total * tasa.promedio)}`
-    : undefined;
-
   return (
-    <main className="px-6">
-      <TasaBcvCard tasa={tasa} />
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
+    <main className="px-6 mt-6">
+      <div className="grid grid-cols-2 gap-3">
         <StatCard
           icon={<TrendingUpIcon className="h-5 w-5" />}
           label="Total vendido"
           value={formatoMoneda.format(totales.total_vendido)}
-          secondaryValue={bsVendido}
         />
         <StatCard
           icon={<PercentIcon className="h-5 w-5" />}
           label="Ganancia (comisión)"
           value={formatoMoneda.format(totales.comision_total)}
-          secondaryValue={bsComision}
         />
         <div className="col-span-2">
           <StatCard
