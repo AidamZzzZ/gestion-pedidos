@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { crearPedidoCompleto, type DatosCliente } from "@/app/vendedor/pedidos/actions";
 import { CheckCircleIcon, MessageIcon, SearchIcon } from "@/components/admin/icons";
 import { QuantityStepper } from "@/components/vendedor/quantity-stepper";
+import { useDraftPedido } from "@/lib/use-draft-pedido";
 
 type Producto = { id: string; nombre: string; precio: number; stock: number };
 
@@ -13,14 +14,6 @@ const formatoMoneda = new Intl.NumberFormat("es-VE", {
   currency: "USD",
   minimumFractionDigits: 2,
 });
-
-const CLIENTE_VACIO: DatosCliente = {
-  nombre_empresa: "",
-  nombre_contacto: "",
-  rif: "",
-  direccion_fiscal: "",
-  numero_contacto: "",
-};
 
 const PASOS = [
   { numero: 1, titulo: "Datos del cliente" },
@@ -58,13 +51,33 @@ export function NuevoPedidoWizard({
   productos: Producto[];
   vendedorNombre: string;
 }) {
-  const [paso, setPaso] = useState<1 | 2 | 3>(1);
-  const [cliente, setCliente] = useState<DatosCliente>(CLIENTE_VACIO);
-  const [cantidades, setCantidades] = useState<Record<string, number>>({});
-  const [busqueda, setBusqueda] = useState("");
+  const { draft, setDraft, resetDraft, cargado } = useDraftPedido();
+
+  const paso = draft.paso;
+  const cliente = draft.cliente;
+  const cantidades = draft.cantidades;
+  const busqueda = draft.busqueda;
+
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [numeroOrden, setNumeroOrden] = useState<string | null>(null);
+
+  // Helpers para actualizar cada trozo del draft
+  function setPaso(p: 1 | 2 | 3) {
+    setDraft((prev) => ({ ...prev, paso: p }));
+  }
+
+  function setCliente(updater: (c: DatosCliente) => DatosCliente) {
+    setDraft((prev) => ({ ...prev, cliente: updater(prev.cliente) }));
+  }
+
+  function setCantidades(updater: (c: Record<string, number>) => Record<string, number>) {
+    setDraft((prev) => ({ ...prev, cantidades: updater(prev.cantidades) }));
+  }
+
+  function setBusqueda(v: string) {
+    setDraft((prev) => ({ ...prev, busqueda: v }));
+  }
 
   const productosFiltrados = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
@@ -164,11 +177,16 @@ export function NuevoPedidoWizard({
       return;
     }
 
+    // Limpiar borrador al confirmar exitosamente
+    resetDraft();
     setNumeroOrden(resultado.numeroOrden);
     // Intento automatico: si el navegador bloquea el popup por venir despues
     // de un await, el boton "Enviar por WhatsApp" de abajo sigue funcionando.
     abrirWhatsapp(resultado.numeroOrden);
   }
+
+  // Mientras se rehidrata desde localStorage mostramos nada para evitar flash
+  if (!cargado) return null;
 
   if (numeroOrden) {
     const numeroWhatsapp = process.env.NEXT_PUBLIC_WHATSAPP_EMPRESA;
@@ -229,6 +247,23 @@ export function NuevoPedidoWizard({
 
   return (
     <main className="px-6 pb-10">
+      {/* Banner de borrador restaurado */}
+      {(cliente.nombre_empresa ||
+        Object.values(cantidades).some((v) => v > 0)) && (
+        <div className="mb-4 flex items-center gap-2 rounded-2xl bg-[#e4eef1] px-4 py-2.5">
+          <span className="text-xs font-semibold text-[#3c6e82]">
+            📋 Borrador restaurado automáticamente
+          </span>
+          <button
+            type="button"
+            onClick={resetDraft}
+            className="ml-auto text-[10px] font-bold uppercase tracking-wide text-[#b3543f] hover:underline"
+          >
+            Descartar
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         {PASOS.map((p) => (
           <div key={p.numero} className="flex-1">

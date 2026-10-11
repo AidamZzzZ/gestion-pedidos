@@ -26,6 +26,7 @@ export default async function PanelVendedorPage() {
         "id, numero_orden, fecha, estado, monto_total, clientes(nombre_empresa), usuarios(nombre)",
       )
       .eq("vendedor_id", sesion.id)
+      .neq("estado", "cancelado")
       .order("fecha", { ascending: false }),
   ]);
 

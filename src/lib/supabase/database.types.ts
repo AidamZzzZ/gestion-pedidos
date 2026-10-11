@@ -259,47 +259,60 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancelar_y_eliminar_pedido: {
+        Args: { p_pedido_id: string }
+        Returns: Json
+      }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       es_admin: { Args: never; Returns: boolean }
-      // Entradas agregadas a mano para las funciones de supabase/migrations/20260829000000_login_helpers.sql.
-      // Se reemplazan solas al correr `npm run supabase:types` una vez esa migracion este aplicada.
       listar_vendedores_login: {
-        Args: Record<PropertyKey, never>
-        Returns: { id: string; nombre: string }[]
+        Args: never
+        Returns: {
+          id: string
+          nombre: string
+        }[]
+      }
+      modificar_pedido_completo: {
+        Args: { p_cliente: Json; p_lineas: Json; p_pedido_id: string }
+        Returns: Json
       }
       obtener_admin_login: {
-        Args: Record<PropertyKey, never>
-        Returns: { id: string; nombre: string }[]
+        Args: never
+        Returns: {
+          id: string
+          nombre: string
+        }[]
       }
       resolver_correo_login: {
         Args: {
-          p_usuario_id: string
           p_rol: Database["public"]["Enums"]["rol_usuario"]
+          p_usuario_id: string
         }
         Returns: string
       }
-      // Agregada a mano para supabase/migrations/20260830000000_resumen_admin.sql.
       resumen_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: { articulos_en_stock: number; total_vendido: number }[]
-      }
-      // Agregada a mano para supabase/migrations/20260831000000_resumen_vendedor.sql.
-      resumen_vendedor: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
+          articulos_en_stock: number
           total_vendido: number
-          comision_total: number
-          pedidos_realizados: number
         }[]
       }
-      // Agregada a mano para supabase/migrations/20260901000000_resumen_por_vendedor.sql.
       resumen_por_vendedor: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          vendedor_id: string
+          comision_total: number
           nombre: string
+          pedidos_realizados: number
           total_vendido: number
+          vendedor_id: string
+        }[]
+      }
+      resumen_vendedor: {
+        Args: never
+        Returns: {
           comision_total: number
           pedidos_realizados: number
+          total_vendido: number
         }[]
       }
     }
@@ -321,12 +334,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -350,11 +363,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -375,11 +388,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -400,11 +413,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -417,11 +430,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

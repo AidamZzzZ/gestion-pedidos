@@ -29,7 +29,7 @@ export function LoginForm({
   admin: Cuenta | null;
 }) {
   const [rol, setRol] = useState<"vendedor" | "admin">("vendedor");
-  const [vendedorId, setVendedorId] = useState(vendedores[0]?.id ?? "");
+  const [vendedorId, setVendedorId] = useState("");
   const [state, formAction] = useActionState(iniciarSesion, initialState);
 
   const usuarioId = rol === "admin" ? (admin?.id ?? "") : vendedorId;
@@ -77,12 +77,18 @@ export function LoginForm({
               {vendedores.length > 0 ? (
                 <div className="relative">
                   <select
+                    required
                     value={vendedorId}
                     onChange={(e) => setVendedorId(e.target.value)}
-                    className="w-full appearance-none rounded-2xl bg-white px-4 py-3 pr-10 text-sm font-medium text-[#1f1b16] shadow-sm"
+                    className={`w-full appearance-none rounded-2xl bg-white px-4 py-3 pr-10 text-sm font-medium shadow-sm outline-none ring-[#3c6e82] focus:ring-2 ${
+                      vendedorId ? "text-[#1f1b16]" : "text-[#8c8579]"
+                    }`}
                   >
+                    <option value="" disabled className="text-[#8c8579]">
+                      (Seleccionar vendedor)
+                    </option>
                     {vendedores.map((v) => (
-                      <option key={v.id} value={v.id}>
+                      <option key={v.id} value={v.id} className="text-[#1f1b16]">
                         {v.nombre}
                       </option>
                     ))}

@@ -152,9 +152,106 @@ export async function crearPedidoCompleto(
   return { ok: true, numeroOrden: pedido.numero_orden };
 }
 
-export async function cancelarPedido(id: string) {
+export type CancelarPedidoResultado =
+  | { ok: true; numeroOrden?: string }
+  | { ok: false; error: string };
+
+export async function cancelarPedido(id: string): Promise<CancelarPedidoResultado> {
+  const sesion = await obtenerSesionDeHeaders();
+  if (!sesion || sesion.rol !== "vendedor") {
+    return { ok: false, error: "Tu sesión no es válida, vuelve a iniciar sesión." };
+  }
+
   const supabase = await createClient();
-  await supabase.from("pedidos").update({ estado: "cancelado" }).eq("id", id);
+  const { data, error } = await supabase.rpc("cancelar_y_eliminar_pedido", {
+    p_pedido_id: id,
+  });
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "No se pudo cancelar el pedido." };
+  }
+
+  const res = data as { ok: boolean; numero_orden?: string; error?: string };
+  if (!res.ok) {
+    return { ok: false, error: res.error ?? "No se pudo cancelar el pedido." };
+  }
+
   revalidatePath("/vendedor/panel");
   revalidatePath("/vendedor/pedidos");
+
+  return { ok: true, numeroOrden: res.numero_orden };
 }
+
+export type ModificarPedidoInput = {
+  pedidoId: string;
+  cliente: DatosCliente;
+  lineas: LineaPedido[];
+};
+
+export type ModificarPedidoResultado =
+  | { ok: true; numeroOrden: string; montoTotal: number }
+  | { ok: false; error: string };
+
+export async function modificarPedido(
+  input: ModificarPedidoInput,
+): Promise<ModificarPedidoResultado> {
+  const cliente: DatosCliente = {
+    nombre_empresa: input.cliente.nombre_empresa.trim(),
+    nombre_contacto: input.cliente.nombre_contacto.trim(),
+    rif: input.cliente.rif.trim(),
+    direccion_fiscal: input.cliente.direccion_fiscal.trim(),
+    numero_contacto: input.cliente.numero_contacto.trim(),
+  };
+
+  if (
+    !cliente.nombre_empresa ||
+    !cliente.nombre_contacto ||
+    !cliente.rif ||
+    !cliente.direccion_fiscal ||
+    !cliente.numero_contacto
+  ) {
+    return { ok: false, error: "Faltan datos del cliente." };
+  }
+
+  if (input.lineas.length === 0) {
+    return { ok: false, error: "El pedido debe tener al menos un producto." };
+  }
+
+  for (const linea of input.lineas) {
+    if (!Number.isInteger(linea.cantidad) || linea.cantidad <= 0) {
+      return { ok: false, error: "Hay una cantidad inválida entre los productos elegidos." };
+    }
+  }
+
+  const sesion = await obtenerSesionDeHeaders();
+  if (!sesion || sesion.rol !== "vendedor") {
+    return { ok: false, error: "Tu sesión no es válida, vuelve a iniciar sesión." };
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("modificar_pedido_completo", {
+    p_pedido_id: input.pedidoId,
+    p_cliente: cliente,
+    p_lineas: input.lineas,
+  });
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Error al modificar el pedido." };
+  }
+
+  const res = data as { ok: boolean; numero_orden?: string; monto_total?: number; error?: string };
+  if (!res.ok) {
+    return { ok: false, error: res.error ?? "No se pudo modificar el pedido." };
+  }
+
+  revalidatePath("/vendedor/panel");
+  revalidatePath("/vendedor/pedidos");
+
+  return {
+    ok: true,
+    numeroOrden: res.numero_orden!,
+    montoTotal: Number(res.monto_total ?? 0),
+  };
+}
+
