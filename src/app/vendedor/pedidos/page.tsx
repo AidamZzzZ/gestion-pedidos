@@ -11,16 +11,28 @@ export default async function PedidosPage() {
   if (!sesion) redirect("/login");
 
   const supabase = await createClient();
-  const { data: pedidos } = await supabase
-    .from("pedidos")
-    .select(
-      "id, numero_orden, fecha, estado, monto_total, clientes(nombre_empresa), usuarios(nombre)",
-    )
-    .eq("vendedor_id", sesion.id)
-    .order("fecha", { ascending: false });
+  const [{ data: pedidos }, { data: productos }] = await Promise.all([
+    supabase
+      .from("pedidos")
+      .select(
+        `id, numero_orden, fecha, estado, monto_total,
+         clientes (
+           id, nombre_empresa, nombre_contacto, rif, direccion_fiscal, numero_contacto
+         ),
+         usuarios (nombre),
+         detalle_pedido (
+           id, producto_id, cantidad, precio_unitario, subtotal,
+           productos (id, nombre, precio, stock)
+         )`,
+      )
+      .eq("vendedor_id", sesion.id)
+      .neq("estado", "cancelado")
+      .order("fecha", { ascending: false }),
+    supabase.from("productos").select("id, nombre, precio, stock").order("nombre"),
+  ]);
 
   return (
-    <main className="px-6">
+    <main className="px-6 pb-12">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl font-bold text-[#1f1b16]">Pedidos</h2>
         <Link
@@ -31,9 +43,16 @@ export default async function PedidosPage() {
         </Link>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-3">
         {pedidos && pedidos.length > 0 ? (
-          pedidos.map((pedido) => <PedidoListItem key={pedido.id} pedido={pedido} />)
+          pedidos.map((pedido) => (
+            <PedidoListItem
+              key={pedido.id}
+              pedido={pedido as unknown as Parameters<typeof PedidoListItem>[0]["pedido"]}
+              catalogoProductos={productos ?? []}
+              vendedorNombre={sesion.nombre}
+            />
+          ))
         ) : (
           <EmptyState
             icon={<ReceiptIcon className="h-6 w-6" />}
@@ -45,3 +64,4 @@ export default async function PedidosPage() {
     </main>
   );
 }
+
